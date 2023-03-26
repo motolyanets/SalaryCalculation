@@ -1,0 +1,48 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:14
+    restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    env_file:
+      - ./salary_calculation/.env
+  backend:
+    container_name: salary_backend
+    build: ./salary_calculation
+    command: python manage.py runserver 0.0.0.0:8000
+    restart: always
+    volumes:
+      - ./salary_calculation:/app/backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - salary_calculation/.env
+    depends_on:
+      - db
+#  frontend:
+#    container_name: salary_frontend
+#    build: ./salary-frontend
+#    restart: always
+#    volumes:
+#      - ./src:/app/src
+#    ports:
+#      - "3000:3000"
+  redis:
+    container_name: redis
+    hostname: redis
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    restart: on-failure
+  celery:
+    build: ./salary_calculation
+    command: celery -A salary_calculation worker -B
+    volumes:
+      - ./salary_calculation:/app/backend
+    depends_on:
+      - redis
+      - backend
+volumes:
+  postgres_data:
